@@ -35,8 +35,15 @@ abstract class Songs extends Table[Songs, Song] with RootConnector {
     select(_.title, _.album).where(_.id eqs id).one()
 
 
-  def deleteBySongId(id: String): Future[ResultSet] =
-    delete.where(_.id eqs id).consistencyLevel_=(ConsistencyLevel.ONE).future()
+  def deleteBySongId(id: String): Future[Option[Song]] = {
+   val deletedRecord = delete.where(_.id eqs id).consistencyLevel_=(ConsistencyLevel.ONE).future()
+
+    deletedRecord.flatMap(_ => getBySongId(id)).recoverWith {
+      case ex: Exception =>
+        Future.failed(new Exception("Could not delete a song", ex))
+    }
+
+  }
 
   def create(song: Song): Future[Option[Song]] = {
     val inserted = insert
